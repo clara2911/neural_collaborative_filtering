@@ -12,6 +12,7 @@ import os
 os.environ['KERAS_BACKEND'] = 'theano'
 import theano.tensor as T
 import keras
+from time import gmtime, strftime
 from keras import backend as K
 from keras import initializations
 from keras.regularizers import l1, l2, l1l2
@@ -39,11 +40,11 @@ def parse_args():
                         help='Batch size.')
     parser.add_argument('--num_factors', type=int, default=8,
                         help='Embedding size of MF model.')
-    parser.add_argument('--layers', nargs='?', default='[64,32,16,8]',
+    parser.add_argument('--layers', nargs='?', default='[64]',
                         help="MLP layers. Note that the first layer is the concatenation of user and item embeddings. So layers[0]/2 is the embedding size.")
     parser.add_argument('--reg_mf', type=float, default=0,
                         help='Regularization for MF embeddings.')                    
-    parser.add_argument('--reg_layers', nargs='?', default='[0,0,0,0]',
+    parser.add_argument('--reg_layers', nargs='?', default='[0]',
                         help="Regularization for each MLP layer. reg_layers[0] is the regularization for embeddings.")
     parser.add_argument('--num_neg', type=int, default=4,
                         help='Number of negative instances to pair with a positive instance.')
@@ -91,7 +92,7 @@ def get_model(num_users, num_items, mf_dim=10, layers=[10], reg_layers=[0], reg_
     mlp_user_latent = Flatten()(MLP_Embedding_User(user_input))
     mlp_item_latent = Flatten()(MLP_Embedding_Item(item_input))
     mlp_vector = merge([mlp_user_latent, mlp_item_latent], mode = 'concat')
-    for idx in xrange(1, num_layer):
+    for idx in range(1, num_layer):
         layer = Dense(layers[idx], W_regularizer= l2(reg_layers[idx]), activation='relu', name="layer%d" %idx)
         mlp_vector = layer(mlp_vector)
 
@@ -102,10 +103,8 @@ def get_model(num_users, num_items, mf_dim=10, layers=[10], reg_layers=[0], reg_
     
     # Final prediction layer
     prediction = Dense(1, activation='sigmoid', init='lecun_uniform', name = "prediction")(predict_vector)
-    
     model = Model(input=[user_input, item_input], 
                   output=prediction)
-    
     return model
 
 def load_pretrain_model(model, gmf_model, mlp_model, num_layers):
@@ -171,6 +170,11 @@ if __name__ == '__main__':
     evaluation_threads = 1#mp.cpu_count()
     print("NeuMF arguments: %s " %(args))
     model_out_file = 'Pretrain/%s_NeuMF_%d_%s_%d.h5' %(args.dataset, mf_dim, args.layers, time())
+    model_out_file = 'Models/%s_NeuMF_%d_%s' %(args.dataset, mf_dim, args.layers) \
+                     + '_time=' + strftime("%H:%M:%S", gmtime())
+
+
+
 
     # Loading data
     t1 = time()
@@ -207,17 +211,20 @@ if __name__ == '__main__':
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
     if args.out > 0:
         model.save_weights(model_out_file, overwrite=True) 
-        
+    print("starting training")
     # Training model
     for epoch in range(num_epochs):
+        print("epoch: " , epoch)
         t1 = time()
         # Generate training instances
+        print("get training instances")
         user_input, item_input, labels = get_train_instances(train, num_negatives)
-        
+        print("fitting model")
         # Training
         hist = model.fit([np.array(user_input), np.array(item_input)], #input
                          np.array(labels), # labels 
                          batch_size=batch_size, nb_epoch=1, verbose=0, shuffle=True)
+        print("done fitting model")
         t2 = time()
         
         # Evaluation
