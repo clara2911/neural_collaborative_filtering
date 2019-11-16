@@ -141,7 +141,7 @@ def get_train_instances(train, num_negatives):
         item_input.append(i)
         labels.append(1)
         # negative instances
-        for t in xrange(num_negatives):
+        for t in range(num_negatives):
             j = np.random.randint(num_items)
             while train.has_key((u, j)):
                 j = np.random.randint(num_items)
@@ -207,7 +207,7 @@ if __name__ == '__main__':
         model.save_weights(model_out_file, overwrite=True) 
         
     # Training model
-    for epoch in xrange(num_epochs):
+    for epoch in range(num_epochs):
         t1 = time()
         # Generate training instances
         user_input, item_input, labels = get_train_instances(train, num_negatives)
