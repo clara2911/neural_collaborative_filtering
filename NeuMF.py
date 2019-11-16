@@ -30,9 +30,9 @@ import argparse
 #################### Arguments ####################
 def parse_args():
     parser = argparse.ArgumentParser(description="Run NeuMF.")
-    parser.add_argument('--path', nargs='?', default='Data/',
+    parser.add_argument('--path', nargs='?', default='data_kgroup/files_and_docs/Junction-Kesko-Receipt-Data/',
                         help='Input data path.')
-    parser.add_argument('--dataset', nargs='?', default='ml-1m',
+    parser.add_argument('--dataset', nargs='?', default='Junction_data_sample',
                         help='Choose a dataset.')
     parser.add_argument('--epochs', type=int, default=100,
                         help='Number of epochs.')
@@ -103,7 +103,7 @@ def get_model(num_users, num_items, mf_dim=10, layers=[10], reg_layers=[0], reg_
     
     # Final prediction layer
     prediction = Dense(1, activation='sigmoid', init='lecun_uniform', name = "prediction")(predict_vector)
-    model = Model(input=[user_input, item_input], 
+    model = Model(input=[user_input, item_input],
                   output=prediction)
     return model
 
@@ -178,6 +178,7 @@ if __name__ == '__main__':
 
     # Loading data
     t1 = time()
+    print("initialising data set object")
     dataset = Dataset(args.path + args.dataset)
     train, testRatings, testNegatives = dataset.trainMatrix, dataset.testRatings, dataset.testNegatives
     num_users, num_items = train.shape
