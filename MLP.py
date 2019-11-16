@@ -9,6 +9,8 @@ He Xiangnan et al. Neural Collaborative Filtering. In WWW 2017.
 import numpy as np
 
 import theano
+import os
+os.environ['KERAS_BACKEND'] = 'theano'
 import theano.tensor as T
 import keras
 from keras import backend as K
@@ -99,7 +101,7 @@ def get_train_instances(train, num_negatives):
         # negative instances
         for t in range(num_negatives):
             j = np.random.randint(num_items)
-            while train.has_key((u, j)):
+            while (u,j) in train:#train.has_key((u, j)):
                 j = np.random.randint(num_items)
             user_input.append(u)
             item_input.append(j)
