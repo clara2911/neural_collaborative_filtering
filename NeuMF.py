@@ -26,6 +26,7 @@ from time import time
 import sys
 import GMF, MLP
 import argparse
+import create_datasets
 
 #################### Arguments ####################
 def parse_args():
@@ -82,7 +83,8 @@ def get_model(num_users, num_items, mf_dim=10, layers=[10], reg_layers=[0], reg_
                                   init = init_normal, W_regularizer = l2(reg_layers[0]), input_length=1)
     MLP_Embedding_Item = Embedding(input_dim = num_items, output_dim = layers[0]/2, name = 'mlp_embedding_item',
                                   init = init_normal, W_regularizer = l2(reg_layers[0]), input_length=1)   
-    
+    # print("embedding input shape: ", len(user_input))
+    # print("shape 1", len(user_input[0]))
     # MF part
     mf_user_latent = Flatten()(MF_Embedding_User(user_input))
     mf_item_latent = Flatten()(MF_Embedding_Item(item_input))
@@ -174,11 +176,21 @@ if __name__ == '__main__':
                      + '_time=' + strftime("%H:%M:%S", gmtime())
 
 
-
+    path = args.path + args.dataset
+    if os.path.exists(path + '.test.negative'):
+        os.remove(path + '.test.negative')
+    if os.path.exists(path + '.test.rating'):
+        os.remove(path + '.test.rating')
+    if os.path.exists(path + '.train.rating'):
+        os.remove(path + '.train.rating')
+    if os.path.exists(path + '.test.negative_ids'):
+        os.remove(path + '.test.negative_ids')
 
     # Loading data
     t1 = time()
     print("initialising data set object")
+    data_creation1 = create_datasets.CreateDatasets(args.path + args.dataset)
+    data_creation1.split_data()
     dataset = Dataset(args.path + args.dataset)
     train, testRatings, testNegatives = dataset.trainMatrix, dataset.testRatings, dataset.testNegatives
     num_users, num_items = train.shape

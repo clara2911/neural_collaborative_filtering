@@ -52,7 +52,11 @@ def evaluate_model(model, testRatings, testNegatives, K, num_thread):
 
 def eval_one_rating(idx):
     rating = _testRatings[idx]
+    print("rating")
+    print(rating)
     items = _testNegatives[idx]
+    print("items")
+    print(items)
     u = rating[0]
     gtItem = rating[1]
     items.append(gtItem)

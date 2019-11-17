@@ -7,42 +7,62 @@ Processing datasets.
 import scipy.sparse as sp
 import numpy as np
 import re
+import os
+import random as rand
+
+food_ids = set()
+pos_samples = dict()
 
 class Dataset(object):
     '''
     classdocs
     '''
 
+
+
     def __init__(self, path):
         '''
         Constructor
         '''
-        self.trainMatrix = self.load_rating_file_as_matrix(path + ".train.rating")
+        self.trainMatrix = self.load_rating_file_as_matrix(path)
         self.testRatings = self.load_rating_file_as_list(path + ".test.rating")
         self.testNegatives = self.load_negative_file(path + ".test.negative")
+        self.testNegatives = self.testNegatives[:len(self.testRatings)]
+        print(len(self.testRatings))
+        print(len(self.testNegatives))
         assert len(self.testRatings) == len(self.testNegatives)
         
         self.num_users, self.num_items = self.trainMatrix.shape
-        
+        # self.food_ids = set()
+        # food_ids = set()
+    #
+    # def add_item(self,id):
+    #     self.food_ids.append(id)
+
     def load_rating_file_as_list(self, filename):
         ratingList = []
         with open(filename, "r") as f:
             # the first line does not contain data so skip it
             f.readline()
             line = f.readline()
-            while line != None and line != "":
-                arr = line.split("\t")
-                user, item = int(arr[0]), int(arr[1])
-                ratingList.append([user, item])
+            k=0
+            while line != None and line != "" and k<100:
+                arr = line.split(";")
+                u, i = int(arr[1]), int(arr[4].strip('"'))
+                ratingList.append([u, i])
+                if (i not in food_ids):
+                    food_ids.add(i)
                 line = f.readline()
+                k+=1
         return ratingList
     
     def load_negative_file(self, filename):
         negativeList = []
         with open(filename, "r") as f:
             line = f.readline()
-            while line != None and line != "":
-                arr = line.split("\t")
+            for k in range(100):
+            #while line != None and line != "":
+                arr = line.split(";")
                 negatives = []
                 for x in arr[1: ]:
                     negatives.append(int(x))
@@ -77,18 +97,21 @@ class Dataset(object):
         return meta_vector
 
     
-    def load_rating_file_as_matrix(self, filename):
+    def load_rating_file_as_matrix(self, path):
         '''
         Read .rating file and Return dok matrix.
         The first line of .rating file is: num_users\t num_items
         '''
-        print("reading data from file: ", filename)
+        filename = path + ".train.rating"
+        # print("reading data from file: ", filename)
+
         # Get number of users and items
         num_users, num_items = 0, 0
         with open(filename, "r") as f:
             line = f.readline()
             line = f.readline()
-            while line != None and line != "":
+            for k in range(100):
+            # while line != None and line != "":
                 arr = line.split(";")
                 u, i = int(arr[1]), int(arr[4].strip('"'))
                 num_users = max(num_users, u)
@@ -100,20 +123,62 @@ class Dataset(object):
             # skip the first line because its not data
             line = f.readline()
             line = f.readline()
-            while line != None and line != "":
+            prev_user_id = None
+            #while line != None and line != "":
+            for k in range(100):
                 arr = line.split(";")
                 # quantity is the sixth column
                 user, item, rating = int(arr[1]), int(arr[4].strip('"')), float(arr[5].split(",")[0])
-
+                if user not in pos_samples:
+                    pos_samples[user] = []
+                pos_samples[user].append(item)
+                if item not in food_ids:
+                    food_ids.add(item)
                 # get meta info about users and items
                 meta_vector = self.get_meta_info(arr)
 
                 if rating > 0:
                     mat[user, item] = 1.0 # should this be just rating to not lose quantity info?
                 # append the meta vector to the end of the matrix
-                mat[user, num_items+1:num_items+9] = meta_vector
+
+                if user != prev_user_id:
+                    with open(path+'.test.rating', "a") as test_file:
+                        #print("writing line in test ratings: ", line)
+                        test_file.write(line)
+                    with open(path+'.test.negative_ids', "a") as neg_test_file:
+                        # print("writing item in test negatives: ", str(user+","+item))
+                        neg_test_file.write(str(user)+","+str(item) + "\n")
+
+                else:
+                    mat[user, num_items+1:num_items+9] = meta_vector
                 line = f.readline()
+                prev_user_id = user
+        self.construct_neg_test(path)
         print("  ")
-        print("done making the matrix! Ow yeah")
+        print("############## DONE MAKING THE MATRIX OW YEAH ######################")
         print("  ")
         return mat
+
+    def construct_neg_test(self, path):
+        with open(path+'.test.negative_ids', 'r') as f:
+            with open(path+'.test.negative', 'a') as f_new:
+                user_id_tuple = f.readline()
+                for k in range(100):
+                #while user_id_tuple != None and user_id_tuple != "":
+                    user_id = int(user_id_tuple.split(",")[0])
+                    pos_user_samples = []
+                    if user_id in pos_samples:
+                        pos_user_samples = pos_samples[user_id]
+                    # options = set(food_ids).symmetric_difference(set(pos_user_samples))
+                    options = list(set(food_ids) - set(pos_user_samples))
+                    # print("options")
+                    # print(len(options))
+                    # print(len(options))
+                    neg_samples = rand.sample(options, 2)
+                    string_list = []
+                    for i in neg_samples:
+                        string_list.append(str(i))
+                    f_new.write("\t".join(string_list)+"\n")
+                    user_id_tuple = f.readline()
+
+
